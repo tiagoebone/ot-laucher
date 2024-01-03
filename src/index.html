@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello World!</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div>
+      <button id="openNotepad">Abrir Bloco de Notas</button>
+    </div>
+    <script>
+      document.getElementById("openNotepad").addEventListener("click", () => {
+        window.electron.openNotepad();
+      });
+    </script>
+  </body>
+</html>
