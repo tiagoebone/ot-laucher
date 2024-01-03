@@ -7,4 +7,7 @@ contextBridge.exposeInMainWorld("electron", {
   openCalabreso: () => {
     ipcRenderer.send("open-calabreso");
   },
+  installCalabreso: () => {
+    ipcRenderer.send("install-calabreso");
+  },
 });
