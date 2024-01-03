@@ -4,7 +4,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
-  openNotepad: () => {
-    ipcRenderer.send("open-notepad");
+  openCalabreso: () => {
+    ipcRenderer.send("open-calabreso");
   },
 });

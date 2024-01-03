@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
+const os = require("os");
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
@@ -47,15 +48,19 @@ app.on("activate", () => {
   }
 });
 
-ipcMain.on("open-notepad", () => {
-  console.log("entrou3");
-  exec("start notepad", (err) => {
-    console.log("entrou4");
+ipcMain.on("open-calabreso", () => {
+  const desktopPath = path.join(
+    os.homedir(),
+    "Desktop",
+    "Calabreso V2",
+    "Calabreso.exe"
+  );
+  exec(`"${desktopPath}"`, (err) => {
     if (err) {
-      console.error("Erro ao abrir o Bloco de Notas:", err);
+      console.error("Erro ao abrir Calabreso.exe:", err);
       return;
     }
-    console.log("Bloco de Notas aberto com sucesso");
+    console.log("Calabreso.exe aberto com sucesso");
   });
 });
 

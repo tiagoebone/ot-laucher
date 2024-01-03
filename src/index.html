@@ -6,12 +6,13 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <div>
-      <button id="openNotepad">Abrir Bloco de Notas</button>
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <button id="openCalabreso">Abrir Calabreso</button>
+      <button id="installCalabreso">Instalar</button>
     </div>
     <script>
-      document.getElementById("openNotepad").addEventListener("click", () => {
-        window.electron.openNotepad();
+      document.getElementById("openCalabreso").addEventListener("click", () => {
+        window.electron.openCalabreso();
       });
     </script>
   </body>
