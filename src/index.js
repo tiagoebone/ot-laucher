@@ -36,7 +36,17 @@ async function deleteClientFolder(webContents) {
     store.set("client", {});
     webContents.send("delete-status", "Client desinstalado com sucesso");
   } catch (err) {
-    console.error("Erro ao desinstalar Calabreso:", err);
+    if (JSON.stringify(err).includes("unlink")) {
+      webContents.send(
+        "delete-status",
+        "Erro: É necessário fechar o Client antes de desinstalar."
+      );
+    } else {
+      webContents.send(
+        "delete-status",
+        "Erro: Ocorreu um erro ao desinstalar."
+      );
+    }
   }
 }
 
@@ -50,16 +60,16 @@ const createWindow = () => {
     // frame: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
-      icon: path.join(__dirname, "icon128.ico"),
       // contextIsolation: true,
     },
+    icon: path.join(__dirname, "icon.png"),
   });
 
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, "index.html"));
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   // mainWindow.setMenu(null);
 
@@ -121,8 +131,8 @@ app.on("activate", () => {
 
 // Instalar Client
 ipcMain.on("install-calabreso", async (event) => {
+  const webContents = event.sender;
   try {
-    const webContents = event.sender;
     const fetch = (...args) =>
       import("node-fetch").then(({ default: fetch }) => fetch(...args));
     const url =
@@ -167,7 +177,10 @@ ipcMain.on("install-calabreso", async (event) => {
         store.set("client", { installed_version: versionData.client_version });
       }
     } catch (error) {
-      console.log("Erro ao buscar a versão: ", error);
+      webContents.send(
+        "error-status",
+        "Erro: Ocorreu um erro ao buscar a versão"
+      );
     }
 
     const calabresoExePath = path.join(
@@ -184,37 +197,53 @@ ipcMain.on("install-calabreso", async (event) => {
       siteOpened: false,
     });
 
+    let hasError = false;
+
     exec(`"${calabresoExePath}"`, (err) => {
       if (err) {
-        console.error("Erro ao abrir Calabreso.exe:", err);
+        hasError = true;
+        webContents.send(
+          "error-status",
+          "Erro: Ocorreu um erro ao abrir o Client"
+        );
         return;
       }
     });
 
-    if (!store.get("client").keepOpened) {
+    if (!store.get("client").keepOpened && !hasError) {
       app.quit();
     }
   } catch (error) {
-    console.error("Erro ao instalar Calabreso:", error);
+    webContents.send(
+      "update-status",
+      "Erro: Certifique que o Client esteja fechado."
+    );
   }
 });
 
 // Abrir Client
-ipcMain.on("open-client", () => {
+ipcMain.on("open-client", async (event) => {
+  const webContents = event.sender;
   const desktopPath = path.join(
     os.homedir(),
     "Documents",
     "Calabreso",
     "Calabreso.exe"
   );
+  let hasError = false;
+
   exec(`"${desktopPath}"`, (err) => {
     if (err) {
-      console.error("Erro ao abrir Calabreso.exe:", err);
+      hasError = true;
+      webContents.send(
+        "error-status",
+        "Erro: Ocorreu um erro ao abrir o Client"
+      );
       return;
     }
   });
 
-  if (!store.get("client").keepOpened) {
+  if (!store.get("client").keepOpened && !hasError) {
     app.quit();
   }
 });
@@ -237,6 +266,10 @@ ipcMain.on("resize-window-to-600", () => {
 
 ipcMain.on("load-url", (event, url) => {
   mainWindow.loadURL(url);
+});
+
+ipcMain.on("quit", () => {
+  app.quit();
 });
 
 // Próximo passo é não mostrar mais o botão de instalar, somente se tiver uma atualização e o botão de Abrir calabreso

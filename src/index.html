@@ -75,7 +75,7 @@
           <div class="update_message_container">
             <div class="update_message" id="installStatus"></div>
           </div>
-          <div class="lds-spinner">
+          <div class="lds-spinner" id="spinner">
             <div></div>
             <div></div>
             <div></div>
@@ -180,20 +180,34 @@
         window.electron.installCalabreso();
       });
 
-      document.getElementById("updateButton").addEventListener("click", () => {
+      // Atualizar
+      function updateClient() {
         document.getElementById("installStatusContainer").style.display =
           "flex";
         document.getElementById("updateButton").style.display = "none";
         document.getElementById("newVersion").style.display = "none";
         document.getElementById("openCalabreso").style.display = "none";
-        document.getElementById("updateStatus").style.display = "block";
+        document.getElementById("installStatusContainer").style.display =
+          "flex";
         window.electron.installCalabreso();
+      }
+      document.getElementById("updateButton").addEventListener("click", () => {
+        updateClient();
+      });
+      window.electron.receive("invoke-installCalabreso", () => {
+        updateClient();
       });
 
       window.addEventListener("DOMContentLoaded", () => {
         window.electron.onUpdateStatus((event, message) => {
           if (message.toLowerCase().includes("baixando")) {
             document.getElementById("installButton").style.display = "none";
+          }
+          if (message.includes("Erro")) {
+            document.getElementById("spinner").style.display = "none";
+            setTimeout(() => {
+              window.electron.quit();
+            }, 4000);
           }
           document.getElementById("installStatus").innerText = message;
         });
@@ -202,17 +216,41 @@
       // Desinstalar
       window.addEventListener("DOMContentLoaded", () => {
         window.electron.onDeleteStatus((event, message) => {
+          if (message.includes("Erro")) {
+            setTimeout(() => {
+              document.getElementById("deleteStatusContainer").style.display =
+                "none";
+              document.getElementById("openCalabreso").style.display = "block";
+            }, 4000);
+          } else {
+            setTimeout(() => {
+              document.getElementById("deleteStatusContainer").style.display =
+                "none";
+              document.getElementById("installButton").style.display = "block";
+            }, 4000);
+          }
           document.getElementById("deleteStatusContainer").style.display =
             "block";
           document.getElementById("deleteStatusMessage").innerText = message;
           document.getElementById("updateButton").style.display = "none";
           document.getElementById("newVersion").style.display = "none";
           document.getElementById("openCalabreso").style.display = "none";
-          setTimeout(() => {
+        });
+      });
+
+      // Checa erro
+      window.addEventListener("DOMContentLoaded", () => {
+        window.electron.onErrorStatus((event, message) => {
+          if (message.includes("Erro")) {
             document.getElementById("deleteStatusContainer").style.display =
-              "none";
-            document.getElementById("installButton").style.display = "block";
-          }, 4000);
+              "flex";
+            document.getElementById("deleteStatusMessage").innerText = message;
+            setTimeout(() => {
+              document.getElementById("deleteStatusContainer").style.display =
+                "none";
+              document.getElementById("deleteStatusMessage").innerText = "";
+            }, 4000);
+          }
         });
       });
 
@@ -287,10 +325,7 @@
       }
 
       window.electron.receive("handle-updates", handleUpdates);
-      window.electron.receive("invoke-installCalabreso", () => {
-        document.getElementById("openCalabreso").style.display = "none";
-        window.electron.installCalabreso();
-      });
+
       window.addEventListener("DOMContentLoaded", () => {
         document.getElementById("installStatusContainer").style.display =
           "flex";
