@@ -20,6 +20,7 @@
   "dependencies": {
     "adm-zip": "^0.5.10",
     "electron-squirrel-startup": "^1.0.0",
+    "electron-store": "^8.1.0",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {

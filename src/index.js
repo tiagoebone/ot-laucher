@@ -1,23 +1,57 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
 const os = require("os");
 const AdmZip = require("adm-zip");
 const fs = require("fs");
+const Store = require("electron-store");
+
+const store = new Store();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
   app.quit();
 }
 
+function deleteFolderRecursive(directoryPath) {
+  if (fs.existsSync(directoryPath)) {
+    fs.readdirSync(directoryPath).forEach((file) => {
+      const curPath = path.join(directoryPath, file);
+      if (fs.lstatSync(curPath).isDirectory()) {
+        // Se for um diretório, recursão
+        deleteFolderRecursive(curPath);
+      } else {
+        // Se for um arquivo, deleta
+        fs.unlinkSync(curPath);
+      }
+    });
+    fs.rmdirSync(directoryPath);
+  }
+}
+
+async function deleteClientFolder(webContents) {
+  try {
+    const calabresoPath = path.join(app.getPath("documents"), "Calabreso");
+    await deleteFolderRecursive(calabresoPath);
+    store.set("client", {});
+    webContents.send("delete-status", "Client desinstalado com sucesso");
+  } catch (err) {
+    console.error("Erro ao desinstalar Calabreso:", err);
+  }
+}
+
+let mainWindow;
+
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    // frame: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
+      icon: path.join(__dirname, "icon128.ico"),
+      // contextIsolation: true,
     },
   });
 
@@ -25,7 +59,42 @@ const createWindow = () => {
   mainWindow.loadFile(path.join(__dirname, "index.html"));
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
+
+  // mainWindow.setMenu(null);
+
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "Opções",
+      submenu: [
+        {
+          label: "Reinstalar",
+          click: () => mainWindow.webContents.send("invoke-installCalabreso"),
+        },
+        { type: "separator" },
+        {
+          label: "Checar por updates",
+          click: () => mainWindow.webContents.send("handle-updates"),
+        },
+        { type: "separator" },
+        {
+          label: "Voltar a tela inicial",
+          click: () => mainWindow.webContents.send("close-site"),
+        },
+        { type: "separator" },
+        {
+          label: "Abrir site",
+          click: () => mainWindow.webContents.send("open-site"),
+        },
+        { type: "separator" },
+        {
+          label: "Desinstalar",
+          click: () => deleteClientFolder(mainWindow.webContents),
+        },
+      ],
+    },
+  ]);
+  Menu.setApplicationMenu(menu);
 };
 
 // This method will be called when Electron has finished
@@ -50,11 +119,92 @@ app.on("activate", () => {
   }
 });
 
-ipcMain.on("open-calabreso", () => {
+// Instalar Client
+ipcMain.on("install-calabreso", async (event) => {
+  try {
+    const webContents = event.sender;
+    const fetch = (...args) =>
+      import("node-fetch").then(({ default: fetch }) => fetch(...args));
+    const url =
+      "https://calabreso.servegame.com/downloads/Calabreso_laucher.zip";
+
+    webContents.send("update-status", "Baixando Client...");
+
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    webContents.send("update-status", "Extraindo...");
+
+    const tempZipPath = path.join(os.tmpdir(), "Calabreso_laucher.zip");
+    fs.writeFileSync(tempZipPath, buffer);
+
+    const zip = new AdmZip(tempZipPath);
+    const extractPath = path.join(os.homedir(), "Documents");
+    zip.extractAllTo(extractPath, true);
+
+    webContents.send("update-status", "Abrindo Client...");
+
+    const miniMapResponse = await fetch(
+      "https://calabreso.servegame.com/downloads/minimap800.otmm"
+    );
+    const miniMapArrayBuffer = await miniMapResponse.arrayBuffer();
+    const miniMapBuffer = Buffer.from(miniMapArrayBuffer);
+    const miniMapSavePath = path.join(
+      app.getPath("appData"),
+      "OTClientV8",
+      "otclientv8",
+      "minimap800.otmm"
+    );
+    fs.writeFileSync(miniMapSavePath, miniMapBuffer);
+
+    try {
+      const versionUrl =
+        "https://calabreso.servegame.com/client_version/client_version.json";
+      const versionResponse = await fetch(versionUrl);
+      const versionData = await versionResponse.json();
+      if (versionData.client_version) {
+        store.set("client", { installed_version: versionData.client_version });
+      }
+    } catch (error) {
+      console.log("Erro ao buscar a versão: ", error);
+    }
+
+    const calabresoExePath = path.join(
+      extractPath,
+      "Calabreso",
+      "Calabreso.exe"
+    );
+
+    store.set("client", {
+      ...store.get("client"),
+      instalation_path: calabresoExePath,
+      installed: true,
+      keepOpened: false,
+      siteOpened: false,
+    });
+
+    exec(`"${calabresoExePath}"`, (err) => {
+      if (err) {
+        console.error("Erro ao abrir Calabreso.exe:", err);
+        return;
+      }
+    });
+
+    if (!store.get("client").keepOpened) {
+      app.quit();
+    }
+  } catch (error) {
+    console.error("Erro ao instalar Calabreso:", error);
+  }
+});
+
+// Abrir Client
+ipcMain.on("open-client", () => {
   const desktopPath = path.join(
     os.homedir(),
-    "Desktop",
-    "Calabreso V2",
+    "Documents",
+    "Calabreso",
     "Calabreso.exe"
   );
   exec(`"${desktopPath}"`, (err) => {
@@ -62,62 +212,35 @@ ipcMain.on("open-calabreso", () => {
       console.error("Erro ao abrir Calabreso.exe:", err);
       return;
     }
-    console.log("Calabreso.exe aberto com sucesso");
   });
-});
 
-function moveFiles(srcDir, destDir) {
-  fs.readdirSync(srcDir).forEach((file) => {
-    const srcFile = path.join(srcDir, file);
-    const destFile = path.join(destDir, file);
-    fs.renameSync(srcFile, destFile);
-  });
-}
-
-ipcMain.on("install-calabreso", async () => {
-  try {
-    const fetch = (...args) =>
-      import("node-fetch").then(({ default: fetch }) => fetch(...args));
-    const url = "https://calabreso.servegame.com/downloads/Calabreso_V2.zip";
-
-    console.log("Baixando");
-
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    console.log("Extraindo");
-
-    const tempZipPath = path.join(os.tmpdir(), "Calabreso_V2.zip");
-    fs.writeFileSync(tempZipPath, buffer);
-
-    const zip = new AdmZip(tempZipPath);
-    const extractPath = path.join(os.homedir(), "Documents", "Calabreso V2");
-    zip.extractAllTo(extractPath, true);
-
-    const subFolder = path.join(extractPath, "Calabreso V2");
-    if (fs.existsSync(subFolder)) {
-      moveFiles(subFolder, extractPath);
-      fs.rmdirSync(subFolder); // Remover a subpasta vazia
-    }
-
-    console.log("Calabreso instalado com sucesso");
-    console.log("Abrindo Calabreso.exe");
-    const calabresoExePath = path.join(extractPath, "Calabreso.exe");
-    exec(`"${calabresoExePath}"`, (err) => {
-      if (err) {
-        console.error("Erro ao abrir Calabreso.exe:", err);
-        return;
-      }
-      console.log("Calabreso.exe aberto com sucesso");
-    });
-  } catch (error) {
-    console.error("Erro ao instalar Calabreso:", error);
+  if (!store.get("client").keepOpened) {
+    app.quit();
   }
 });
 
-// Proximo passo é mostrar os console.logs dentro de uma div
-// Depois não mostrar mais o botão de instalar, somente se tiver uma atualização
+ipcMain.handle("getStoreValue", (event, key) => {
+  return store.get(key);
+});
+
+ipcMain.on("setStoreValue", (event, key, value) => {
+  store.set(key, value);
+});
+
+ipcMain.on("resize-window-to-720", () => {
+  mainWindow.setSize(1280, 720);
+});
+
+ipcMain.on("resize-window-to-600", () => {
+  mainWindow.setSize(800, 600);
+});
+
+ipcMain.on("load-url", (event, url) => {
+  mainWindow.loadURL(url);
+});
+
+// Próximo passo é não mostrar mais o botão de instalar, somente se tiver uma atualização e o botão de Abrir calabreso
+// Depois é fazer tudo automaticamente sem necessidade de botão
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
