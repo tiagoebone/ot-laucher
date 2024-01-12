@@ -5,7 +5,9 @@ const os = require("os");
 const AdmZip = require("adm-zip");
 const fs = require("fs");
 const Store = require("electron-store");
+const { updateElectronApp } = require("update-electron-app");
 
+updateElectronApp();
 const store = new Store();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -62,7 +64,7 @@ const createWindow = () => {
       preload: path.join(__dirname, "preload.js"),
       // contextIsolation: true,
     },
-    icon: path.join(__dirname, "icon.png"),
+    icon: path.join(__dirname, "icon.ico"),
   });
 
   // and load the index.html of the app.
@@ -98,7 +100,7 @@ const createWindow = () => {
         },
         { type: "separator" },
         {
-          label: "Desinstalar",
+          label: "Remover Client",
           click: () => deleteClientFolder(mainWindow.webContents),
         },
       ],

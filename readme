@@ -1,4 +1,1 @@
-npm install -g electron-forge
-electron-forge init nome-do-seu-projeto --template=react-typescript
-cd nome-do-seu-projeto
-npm start
+fazer o desisntalar remover os arquivos do electron no appdata

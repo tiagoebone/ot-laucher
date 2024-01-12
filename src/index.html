@@ -50,7 +50,7 @@
           Jogar
         </button>
         <div
-          style="display: none"
+          style="display: none; margin-bottom: 24px"
           id="newVersion"
           class="update_message_container"
         >
@@ -218,9 +218,7 @@
         window.electron.onDeleteStatus((event, message) => {
           if (message.includes("Erro")) {
             setTimeout(() => {
-              document.getElementById("deleteStatusContainer").style.display =
-                "none";
-              document.getElementById("openCalabreso").style.display = "block";
+              window.electron.quit();
             }, 4000);
           } else {
             setTimeout(() => {
@@ -246,9 +244,7 @@
               "flex";
             document.getElementById("deleteStatusMessage").innerText = message;
             setTimeout(() => {
-              document.getElementById("deleteStatusContainer").style.display =
-                "none";
-              document.getElementById("deleteStatusMessage").innerText = "";
+              window.electron.quit();
             }, 4000);
           }
         });

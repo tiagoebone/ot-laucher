@@ -1,8 +1,8 @@
 {
-  "name": "electron3",
-  "productName": "electron3",
+  "name": "otlaucher",
+  "productName": "Calabreso",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "OT Laucher",
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",
@@ -13,15 +13,16 @@
   },
   "keywords": [],
   "author": {
-    "name": "tiagoebonetc",
-    "email": "tiago.ebone@sencon.com.br"
+    "name": "tiagoebone",
+    "email": "tiagoebone@gmail.com"
   },
   "license": "MIT",
   "dependencies": {
     "adm-zip": "^0.5.10",
     "electron-squirrel-startup": "^1.0.0",
     "electron-store": "^8.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "update-electron-app": "^3.0.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.2.0",
@@ -31,5 +32,9 @@
     "@electron-forge/maker-zip": "^7.2.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.2.0",
     "electron": "28.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tiagoebone/ot-laucher"
   }
 }
